@@ -83,8 +83,9 @@ public:
     static juce::AudioProcessorValueTreeState::ParameterLayout
     createParameterLayout();
 
+    using APVTS = juce::AudioProcessorValueTreeState;
     // setting up a Value Tree State for the parameters
-    juce::AudioProcessorValueTreeState apvts{*this, nullptr, "Parameters", createParameterLayout()};
+    APVTS apvts{*this, nullptr, "Parameters", createParameterLayout()};
 
 private:
     // using Namespace Filter

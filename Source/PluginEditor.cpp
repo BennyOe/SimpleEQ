@@ -43,7 +43,7 @@ void SimpleEQAudioProcessorEditor::paint(juce::Graphics &g) {
 
 void SimpleEQAudioProcessorEditor::resized() {
     // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
+    // subcomponents in your editor.
     auto bounds = getLocalBounds();
     auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
 
