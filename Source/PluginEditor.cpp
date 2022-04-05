@@ -33,12 +33,92 @@ SimpleEQAudioProcessorEditor::~SimpleEQAudioProcessorEditor() {
 
 //==============================================================================
 void SimpleEQAudioProcessorEditor::paint(juce::Graphics &g) {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    using namespace juce;
+    // set a black background
+    g.fillAll(Colours::black);
+    auto bounds = getLocalBounds();
+    // get the response area
+    auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+    // get the full width
+    auto w = responseArea.getWidth();
 
-    g.setColour(juce::Colours::white);
-    g.setFont(15.0f);
-//    g.drawFittedText("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
+    // get the filter chains
+    auto &lowcut = monoChain.get<ChainPositions::LowCut>();
+    auto &peak = monoChain.get<ChainPositions::Peak>();
+    auto &highcut = monoChain.get<ChainPositions::HighCut>();
+
+    auto sampleRate = audioProcessor.getSampleRate();
+
+    std::vector<double> mags;
+    mags.resize(w);
+
+    // calculating one magnitude per pixel
+    for (int i = 0; i < w; ++i) {
+        // gain initialisation with 1 because it is multiplicative
+        double mag = 1.f;
+        // mapping pixel to the hearing range
+        auto freq = mapToLog10(double(i) / double(w), 20.0, 20000.0);
+
+        // calling the magnitude function if filter is not bypassed
+        if (!monoChain.isBypassed<ChainPositions::Peak>()) {
+            mag *= peak.coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        }
+        if (!lowcut.isBypassed<0>()) {
+            mag *= lowcut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        }
+        if (!lowcut.isBypassed<1>()) {
+            mag *= lowcut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        }
+        if (!lowcut.isBypassed<2>()) {
+            mag *= lowcut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        }
+        if (!lowcut.isBypassed<3>()) {
+            mag *= lowcut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        }
+
+        if (!highcut.isBypassed<0>()) {
+            mag *= highcut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        }
+        if (!highcut.isBypassed<1>()) {
+            mag *= highcut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        }
+        if (!highcut.isBypassed<2>()) {
+            mag *= highcut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        }
+        if (!highcut.isBypassed<3>()) {
+            mag *= highcut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        }
+
+        // convert to decibels
+        mags[i] = Decibels::gainToDecibels(mag);
+    }
+
+    // building the path
+    Path responseCurve;
+
+    // defining min and max positions in the window
+    const double outputMin = responseArea.getBottom();
+    const double outputMax = responseArea.getY();
+    // mapping the decibel to the response area
+    auto map = [outputMin, outputMax](double input) {
+        return jmap(input, -24.0, 24.0, outputMin, outputMax);
+    };
+
+    // starting the responseCurve
+    responseCurve.startNewSubPath(responseArea.getX(), map(mags.front()));
+
+    // calculating the responseCurve
+    for (size_t i = 1; i < mags.size(); ++i) {
+        responseCurve.lineTo(responseArea.getX() + i, map(mags[i]));
+    }
+
+    // draw the response area border
+    g.setColour(Colours::orange);
+    g.drawRoundedRectangle(responseArea.toFloat(), 4.f, 1.f);
+
+    // draw path
+    g.setColour(Colours::white);
+    g.strokePath(responseCurve, PathStrokeType(2.f));
 }
 
 void SimpleEQAudioProcessorEditor::resized() {
@@ -59,6 +139,17 @@ void SimpleEQAudioProcessorEditor::resized() {
     peakFreqSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.33));
     peakGainSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.5));
     peakQualitySlider.setBounds(bounds);
+}
+
+void SimpleEQAudioProcessorEditor::parameterValueChanged(int parameterIndex, float newValue) {
+    parametersChanged.set(true);
+}
+
+void SimpleEQAudioProcessorEditor::timerCallback() {
+    if(parametersChanged.compareAndSetBool(false, true)){
+        // update the monochain
+        // signal a repaint
+    }
 }
 
 std::vector<juce::Component *> SimpleEQAudioProcessorEditor::getComps() {

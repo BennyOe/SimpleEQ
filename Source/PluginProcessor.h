@@ -32,16 +32,18 @@ using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
 // setting a processor chain for a mono signal wigh the three filters
 using MonoChain = juce::dsp::ProcessorChain<CutFilter, Filter, CutFilter>;
 //==============================================================================
-/**
-*/
+enum ChainPositions {
+    LowCut,
+    Peak,
+    HighCut
+};
+using Coefficients = Filter::CoefficientsPtr;
+void updateCoefficients(Coefficients &old, const Coefficients &replacements);
+
+Coefficients makePeakFilter(const ChainSettings& chainSettings, double sampleRate);
+
 class SimpleEQAudioProcessor : public juce::AudioProcessor {
 public:
-
-    enum ChainPositions {
-        LowCut,
-        Peak,
-        HighCut
-    };
 
     //==============================================================================
     SimpleEQAudioProcessor();
@@ -105,10 +107,6 @@ private:
 // creating two mono chains for left and right channel
     MonoChain leftChain, rightChain;
     void updatePeakFilter(const ChainSettings &chainSettings);
-
-    using Coefficients = Filter::CoefficientsPtr;
-
-    static void updateCoefficients(Coefficients &old, const Coefficients &replacements);
 
     template<int Index, typename ChainType, typename CoefficientType>
     void update(ChainType &chain, const CoefficientType &coefficients) {
