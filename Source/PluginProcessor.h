@@ -10,6 +10,7 @@
 
 #include <JuceHeader.h>
 
+
 enum Slope {
     Slope_12,
     Slope_24,
@@ -24,11 +25,24 @@ struct ChainSettings {
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState &apvts);
+// using Namespace Filter
+using Filter = juce::dsp::IIR::Filter<float>;
+// setting a processor chain for the 4 slopes of 12db 24db 36db and 48db for the cut filters
+using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
+// setting a processor chain for a mono signal wigh the three filters
+using MonoChain = juce::dsp::ProcessorChain<CutFilter, Filter, CutFilter>;
 //==============================================================================
 /**
 */
 class SimpleEQAudioProcessor : public juce::AudioProcessor {
 public:
+
+    enum ChainPositions {
+        LowCut,
+        Peak,
+        HighCut
+    };
+
     //==============================================================================
     SimpleEQAudioProcessor();
 
@@ -88,21 +102,8 @@ public:
     APVTS apvts{*this, nullptr, "Parameters", createParameterLayout()};
 
 private:
-    // using Namespace Filter
-    using Filter = juce::dsp::IIR::Filter<float>;
-    // setting a processor chain for the 4 slopes of 12db 24db 36db and 48db for the cut filters
-    using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
-    // setting a processor chain for a mono signal wigh the three filters
-    using MonoChain = juce::dsp::ProcessorChain<CutFilter, Filter, CutFilter>;
-    // creating two mono chains for left and right channel
+// creating two mono chains for left and right channel
     MonoChain leftChain, rightChain;
-
-    enum ChainPositions {
-        LowCut,
-        Peak,
-        HighCut
-    };
-
     void updatePeakFilter(const ChainSettings &chainSettings);
 
     using Coefficients = Filter::CoefficientsPtr;
@@ -141,8 +142,10 @@ private:
         }
     }
 
-    void updateLowCutFilters(const ChainSettings& chainSettings);
-    void updateHighCutFilters(const ChainSettings& chainSettings);
+    void updateLowCutFilters(const ChainSettings &chainSettings);
+
+    void updateHighCutFilters(const ChainSettings &chainSettings);
+
     void updateFilters();
     //==============================================================================
 
